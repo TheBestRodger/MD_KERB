@@ -1,0 +1,4 @@
+HIDDEN { local: __*; _rest*; _save*; *; };
+kldap_0_MIT {
+kdb_function_table;
+};

@@ -1,0 +1,4 @@
+HIDDEN { local: __*; _rest*; _save*; *; };
+greet_server_1_MIT {
+kdcauthdata_greet_initvt;
+};

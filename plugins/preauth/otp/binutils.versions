@@ -1,0 +1,4 @@
+HIDDEN { local: __*; _rest*; _save*; *; };
+otp_0_MIT {
+kdcpreauth_otp_initvt;
+};

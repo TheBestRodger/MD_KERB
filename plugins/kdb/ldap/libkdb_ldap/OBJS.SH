@@ -1,0 +1,1 @@
+kdb_ldap.so kdb_ldap_conn.so ldap_realm.so ldap_create.so ldap_krbcontainer.so ldap_principal.so ldap_principal2.so ldap_pwd_policy.so ldap_misc.so ldap_handle.so ldap_tkt_policy.so princ_xdr.so ldap_service_stash.so kdb_xdr.so ldap_err.so lockout.so

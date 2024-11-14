@@ -1,0 +1,12 @@
+com_err_3_MIT {
+add_error_table;
+com_err;
+com_err_va;
+error_message;
+error_table_name;
+error_table_name_r;
+remove_error_table;
+reset_com_err_hook;
+set_com_err_hook;
+};
+HIDDEN { local: __*; _rest*; _save*; *; };
