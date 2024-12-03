@@ -353,7 +353,7 @@ cm_select_or_poll(const struct select_state *in, time_ms endtime,
     if (retval != 0)
         return retval;
     interval = (curtime < endtime) ? endtime - curtime : 0;
-
+    printf("Interval = [%d] \n", interval);
     /* We don't need a separate copy of the selstate for poll, but use one for
      * consistency with how we use select. */
     *out = *in;

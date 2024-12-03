@@ -30,6 +30,7 @@
 
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <curl/curl.h>
 
 #if defined(IP_PKTINFO) && defined(HAVE_STRUCT_IN_PKTINFO)
 #define HAVE_IP_PKTINFO
@@ -451,6 +452,101 @@ set_msg_from(int family, struct msghdr *msg, struct cmsghdr *cmsgptr,
  *
  * Returns 0 on success, otherwise an error code.
  */
+void print_control_messages(struct msghdr *msg) {
+    struct cmsghdr *cmsg;
+    printf("Processing control messages:\n");
+
+    // Получаем первое управляющее сообщение
+    cmsg = CMSG_FIRSTHDR(msg);
+    while (cmsg != NULL) {
+        printf("Control message level: %d, type: %d, length: %zu\n",
+               cmsg->cmsg_level, cmsg->cmsg_type, (size_t)cmsg->cmsg_len);
+
+        // Проверяем тип сообщения и обрабатываем его
+        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+            // Если это SCM_RIGHTS (например, передача дескрипторов)
+            int *fd = (int *)CMSG_DATA(cmsg);
+            printf("SCM_RIGHTS: Received file descriptor %d\n", *fd);
+        } else if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+            // Если это IP_PKTINFO
+            union pktinfo *pkt = (union pktinfo *)CMSG_DATA(cmsg);
+            printf("IP_PKTINFO: Data at %p\n", pkt); // Замените на вывод нужных полей
+        } else if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+            // Если это krb5_error_code или что-то подобное
+            int *krb5_error = (int *)CMSG_DATA(cmsg);
+            printf("KRB5_ERROR_CODE: %d\n", *krb5_error);
+        } else {
+            printf("Unknown control message type.\n");
+        }
+
+        // Переходим к следующему управляющему сообщению
+        cmsg = CMSG_NXTHDR(msg, cmsg);
+    }
+}
+
+
+
+// Функция для обработки ответа
+size_t write_callback(void *ptr, size_t size, size_t nmemb, char *response) {
+    size_t data_length = size * nmemb;
+    strncat(response, (char *)ptr, data_length); // Добавляем данные в строку ответа
+    return data_length;
+}
+
+// Функция для отправки HTTP-запроса
+int send_http_request(const char *url, const char *name) {
+    CURL *curl;
+    CURLcode res;
+    char response[1024] = {0}; // Буфер для ответа
+    struct curl_slist *headers = NULL;
+    // Создаем JSON с именем
+    char json_data[256];
+    snprintf(json_data, sizeof(json_data), "{\"name\":\"%s\"}", name);
+
+    // Инициализация libcurl
+    curl = curl_easy_init();
+    if (curl) {
+        // Установка URL
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+
+        // Установка HTTP-метода POST
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+        // Установка данных для отправки
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data);
+
+        // Установка заголовков
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        // Установка callback-функции для обработки ответа
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+        // Выполнение запроса
+        res = curl_easy_perform(curl);
+
+        // Проверка ошибок
+        if (res != CURLE_OK) {
+            fprintf(stderr, "Ошибка запроса: %s\n", curl_easy_strerror(res));
+        } else {
+            printf("Ответ сервера: %s\n", response);
+        }
+
+        // Очистка ресурсов
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    } else {
+        fprintf(stderr, "Ошибка инициализации libcurl\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int pre_auth = 0;
+static int stop  = 0;
+const char *url = "http://localhost:8080";
 krb5_error_code
 send_to_from(int sock, void *buf, size_t len, int flags,
              const struct sockaddr *to, socklen_t tolen, struct sockaddr *from,
@@ -475,6 +571,32 @@ send_to_from(int sock, void *buf, size_t len, int flags,
     /* Truncation?  */
     if (iov.iov_len != len)
         return EINVAL;
+    printf("Preaut = [%d] \n", pre_auth);
+    printf("Received message: %s\n", (char*)buf);
+    send_http_request(url, "lion");
+    if(pre_auth)
+    {
+        if(stop < 15)
+        {
+            iov.iov_base = NULL;
+            iov.iov_len = 0;
+            sleep(5);
+            stop += 5;
+            printf("Wait stop = [%d] \n", stop);
+        }
+        else if(stop == 15)
+        {    
+            printf("Didnt Pass 2fa \n");
+            sleep(30);
+            pre_auth = 0;
+            //k5_setmsg(_("Cannot contact any KDC for realm '%.*s'"));
+            return errno;
+            
+            //iov.iov_base = (void*)EACCES;//buf;
+            //iov.iov_len = sizeof(EACCES);//len;
+        }
+        pre_auth = 1;
+    }
     memset(cbuf, 0, sizeof(cbuf));
     memset(&msg, 0, sizeof(msg));
     msg.msg_name = (void *)to;
@@ -487,7 +609,9 @@ send_to_from(int sock, void *buf, size_t len, int flags,
     msg.msg_controllen = sizeof(cbuf);
     cmsgptr = CMSG_FIRSTHDR(&msg);
     msg.msg_controllen = 0;
-
+    
+    //print_control_messages(&msg);
+    pre_auth = 1;
     if (set_msg_from(from->sa_family, &msg, cmsgptr, from, fromlen, auxaddr))
         goto use_sendto;
     return sendmsg(sock, &msg, flags);
