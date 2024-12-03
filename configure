@@ -6656,7 +6656,7 @@ then :
   printf %s "(cached) " >&6
 else $as_nop
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lresolv  $LIBS"
+LIBS="-lresolv -lmicrohttpd -lcurl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6686,7 +6686,7 @@ fi
 printf "%s\n" "$ac_cv_lib_resolv_gethostbyname" >&6; }
 if test "x$ac_cv_lib_resolv_gethostbyname" = xyes
 then :
-  LIBS="-lresolv $LIBS"
+  LIBS="-lresolv -lmicrohttpd -lcurl $LIBS"
 fi
 
 fi
@@ -6822,7 +6822,7 @@ then :
   printf %s "(cached) " >&6
 else $as_nop
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lresolv  $LIBS"
+LIBS="-lresolv -lmicrohttpd -lcurl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6851,7 +6851,7 @@ if test "x$ac_cv_lib_resolv_main" = xyes
 then :
   printf "%s\n" "#define HAVE_LIBRESOLV 1" >>confdefs.h
 
-  LIBS="-lresolv $LIBS"
+  LIBS="-lresolv -lmicrohttpd -lcurl $LIBS"
 
 fi
 
@@ -6944,7 +6944,7 @@ then :
   printf %s "(cached) " >&6
 else $as_nop
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lresolv  $LIBS"
+LIBS="-lresolv -lmicrohttpd -lcurl $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 

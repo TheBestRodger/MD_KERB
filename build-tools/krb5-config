@@ -41,7 +41,7 @@ DEFCCNAME='FILE:/tmp/krb5cc_%{uid}'
 DEFKTNAME='FILE:/etc/krb5.keytab'
 DEFCKTNAME='FILE:/etc/krb5/user/%{euid}/client.keytab'
 
-LIBS='-lresolv '
+LIBS='-lresolv -lmicrohttpd -lcurl '
 GEN_LIB=
 
 # Defaults for program

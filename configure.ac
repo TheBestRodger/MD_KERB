@@ -26,6 +26,8 @@ PKG_PROG_PKG_CONFIG
 
 AC_CHECK_HEADER([stdint.h], [],
   [AC_MSG_ERROR([stdint.h is required])])
+AC_CHECK_LIB([microhttpd], [MHD_start_daemon], [], [AC_MSG_ERROR([libmicrohttpd is required but not found])])
+AC_CHECK_HEADERS([microhttpd.h], [], [AC_MSG_ERROR([microhttpd.h is required but not found])])
 
 AC_CACHE_CHECK([whether integers are two's complement],
   [krb5_cv_ints_twos_compl],

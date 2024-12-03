@@ -176,7 +176,7 @@ CXX = g++
 LD = $(PURE) gcc
 KRB_INCLUDES = -I$(BUILDTOP)/include -I$(top_srcdir)/include
 LDFLAGS = 
-LIBS = -lresolv 
+LIBS = -lresolv -lmicrohttpd -lcurl 
 
 INSTALL=/usr/bin/install -c
 INSTALL_STRIP=
