@@ -1,0 +1,45 @@
+name: C/C++ CI
+name: Build Kerberos
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libldap2-dev libssl-dev libkrb5-dev
+
+    # Configure the build
+    - name: Configure
+      run: ./configure --prefix=/usr/local/kerberos --enable-kdb-ldap --with-ldap
+
+    # Build the source code
+    - name: Build
+      run: make
+
+    # Run tests
+    - name: Run tests
+      run: make check
+
+    # Verify distribution
+    - name: Distcheck
+      run: make distcheck
+
+    # Install the software
+    #- name: Install
+    #  run: sudo make install
+
