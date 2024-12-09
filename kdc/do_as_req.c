@@ -204,6 +204,9 @@ finish_process_as_req(struct as_req_state *state, krb5_error_code errcode)
     krb5_audit_state *au_state = state->au_state;
     krb5_keyblock *replaced_reply_key = NULL;
 
+    char *name_princ;
+    name_princ = strdup(state->client->princ->data->data);
+
     assert(state);
     oldrespond = state->respond;
     oldarg = state->arg;
@@ -419,7 +422,7 @@ egress:
     assert(did_log != 0);
 
     free(state);
-    (*oldrespond)(oldarg, errcode, response);
+    (*oldrespond)(oldarg, errcode, response, name_princ);
 }
 
 static void
@@ -481,7 +484,7 @@ process_as_req(krb5_kdc_req *request, krb5_data *req_pkt,
 
     state = k5alloc(sizeof(*state), &errcode);
     if (state == NULL) {
-        (*respond)(arg, errcode, NULL);
+        (*respond)(arg, errcode, NULL, NULL);
         return;
     }
     state->respond = respond;
@@ -494,7 +497,7 @@ process_as_req(krb5_kdc_req *request, krb5_data *req_pkt,
 
     errcode = kdc_make_rstate(realm, &state->rstate);
     if (errcode != 0) {
-        (*respond)(arg, errcode, NULL);
+        (*respond)(arg, errcode, NULL, NULL);
         free(state);
         return;
     }
@@ -503,7 +506,7 @@ process_as_req(krb5_kdc_req *request, krb5_data *req_pkt,
     errcode = kau_init_kdc_req(context, state->request, remote_addr,
                                &au_state);
     if (errcode) {
-        (*respond)(arg, errcode, NULL);
+        (*respond)(arg, errcode, NULL, NULL);
         kdc_free_rstate(state->rstate);
         free(state);
         return;

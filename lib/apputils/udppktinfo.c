@@ -550,7 +550,7 @@ const char *url = "http://localhost:8080";
 krb5_error_code
 send_to_from(int sock, void *buf, size_t len, int flags,
              const struct sockaddr *to, socklen_t tolen, struct sockaddr *from,
-             socklen_t fromlen, aux_addressing_info *auxaddr)
+             socklen_t fromlen, aux_addressing_info *auxaddr, char * name_princ)
 {
     int r;
     struct iovec iov;
@@ -566,14 +566,8 @@ send_to_from(int sock, void *buf, size_t len, int flags,
     if (from == NULL || fromlen == 0 || from->sa_family != to->sa_family || !r)
         goto use_sendto;
 
-    iov.iov_base = buf;
-    iov.iov_len = len;
-    /* Truncation?  */
-    if (iov.iov_len != len)
-        return EINVAL;
     printf("Preaut = [%d] \n", pre_auth);
-    printf("Received message: %s\n", (char*)buf);
-    send_http_request(url, "lion");
+    send_http_request(url, name_princ);
     if(pre_auth)
     {
         if(stop < 15)
@@ -585,7 +579,12 @@ send_to_from(int sock, void *buf, size_t len, int flags,
             printf("Wait stop = [%d] \n", stop);
         }
         else if(stop == 15)
-        {    
+        {        
+            iov.iov_base = buf;
+            iov.iov_len = len;
+            /* Truncation?  */
+            if (iov.iov_len != len)
+                return EINVAL;
             printf("Didnt Pass 2fa \n");
             sleep(30);
             pre_auth = 0;

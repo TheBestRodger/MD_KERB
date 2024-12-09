@@ -46,7 +46,7 @@ struct dispatch_state {
 
 static void
 finish_dispatch(struct dispatch_state *state, krb5_error_code code,
-                krb5_data *response)
+                krb5_data *response, char * name)
 {
     loop_respond_fn oldrespond = state->respond;
     void *oldarg = state->arg;
@@ -63,11 +63,11 @@ finish_dispatch(struct dispatch_state *state, krb5_error_code code,
     }
 
     free(state);
-    (*oldrespond)(oldarg, code, response);
+    (*oldrespond)(oldarg, code, response, name);//net - server
 }
 
 static void
-finish_dispatch_cache(void *arg, krb5_error_code code, krb5_data *response)
+finish_dispatch_cache(void *arg, krb5_error_code code, krb5_data *response, char * name)
 {
     struct dispatch_state *state = arg;
     krb5_context kdc_err_context = state->kdc_err_context;
@@ -83,7 +83,7 @@ finish_dispatch_cache(void *arg, krb5_error_code code, krb5_data *response)
         kdc_insert_lookaside(kdc_err_context, state->request, response);
 #endif
 
-    finish_dispatch(state, code, response);
+    finish_dispatch(state, code, response, name);
 }
 
 void
@@ -97,18 +97,21 @@ dispatch(void *cb, const krb5_fulladdr *local_addr,
     struct dispatch_state *state;
     struct server_handle *handle = cb;
     krb5_context kdc_err_context = handle->kdc_err_context;
-
+    char * name_princ;
     state = k5alloc(sizeof(*state), &retval);
     if (state == NULL) {
-        (*respond)(arg, retval, NULL);
+        (*respond)(arg, retval, NULL, NULL);
         return;
     }
+        
     state->respond = respond;
     state->arg = arg;
     state->request = pkt;
     state->is_tcp = is_tcp;
     state->kdc_err_context = kdc_err_context;
-
+    decode_krb5_as_req(pkt, &req);
+    name_princ = (char*)req->client->data->data;
+    printf("Name of princ = %s \n", name_princ);
     /* decode incoming packet, and dispatch */
 
 #ifndef NOCACHE
@@ -120,6 +123,7 @@ dispatch(void *cb, const krb5_fulladdr *local_addr,
 
         name = inet_ntop(ADDRTYPE2FAMILY(remote_addr->address->addrtype),
                          remote_addr->address->contents, buf, sizeof(buf));
+
         if (name == 0)
             name = "[unknown address type]";
         if (response)
@@ -132,7 +136,7 @@ dispatch(void *cb, const krb5_fulladdr *local_addr,
                              "from %s during request processing, dropping "
                              "repeated request", name);
 
-        finish_dispatch(state, response ? 0 : KRB5KDC_ERR_DISCARD, response);
+        finish_dispatch(state, response ? 0 : KRB5KDC_ERR_DISCARD, response, "noname");
         return;
     }
 
@@ -172,7 +176,7 @@ dispatch(void *cb, const krb5_fulladdr *local_addr,
 
 done:
     krb5_free_kdc_req(kdc_err_context, req);
-    finish_dispatch_cache(state, retval, response);
+    finish_dispatch_cache(state, retval, response, "noname");
 }
 
 static krb5_error_code

@@ -465,5 +465,5 @@ egress:
     if (ret)
         krb5_free_data(server_handle->context, response);
     krb5_kt_close(server_handle->context, kt);
-    (*respond)(arg, ret, ret == 0 ? response : NULL);
+    (*respond)(arg, ret, ret == 0 ? response : NULL, NULL);
 }

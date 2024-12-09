@@ -978,11 +978,11 @@ struct udp_dispatch_state {
 };
 
 static void
-process_packet_response(void *arg, krb5_error_code code, krb5_data *response)
+process_packet_response(void *arg, krb5_error_code code, krb5_data *response, char * name)
 {
     struct udp_dispatch_state *state = arg;
     int cc;
-
+    krb5_enc_tkt_part   *req = NULL;
     if (code)
         com_err(state->prog ? state->prog : NULL, code,
                 _("while dispatching (udp)"));
@@ -993,7 +993,7 @@ process_packet_response(void *arg, krb5_error_code code, krb5_data *response)
                       (socklen_t) response->length, 0,
                       (struct sockaddr *)&state->saddr, state->saddr_len,
                       (struct sockaddr *)&state->daddr, state->daddr_len,
-                      &state->auxaddr);
+                      &state->auxaddr, name);
     if (cc == -1) {
         /* Note that the local address (daddr*) has no port number
          * info associated with it. */
@@ -1218,7 +1218,7 @@ struct tcp_dispatch_state {
 };
 
 static void
-process_tcp_response(void *arg, krb5_error_code code, krb5_data *response)
+process_tcp_response(void *arg, krb5_error_code code, krb5_data *response, char * name)
 {
     struct tcp_dispatch_state *state = arg;
     verto_ev *ev;
@@ -1325,7 +1325,7 @@ process_tcp_connection_read(verto_ctx *ctx, verto_ev *ev)
                     krb5_free_data(get_context(conn->handle), response);
                     goto kill_tcp_connection;
                 }
-                process_tcp_response(state, 0, response);
+                process_tcp_response(state, 0, response, "noname");
             }
         }
     } else {
