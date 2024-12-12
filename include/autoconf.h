@@ -40,11 +40,11 @@
 #define DESTRUCTOR_ATTR_WORKS 1
 
 /* Define to disable PKINIT plugin support */
-#define DISABLE_PKINIT 1
+/* #undef DISABLE_PKINIT */
 
 /* Define if LDAP KDB support within the Kerberos library (mainly ASN.1 code)
    should be enabled. */
-#define ENABLE_LDAP 1
+/* #undef ENABLE_LDAP */
 
 /* Define if translation functions should be used. */
 #define ENABLE_NLS 1
@@ -155,7 +155,7 @@
 #define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the `EVP_PKEY_get_bn_param' function. */
-/* #undef HAVE_EVP_PKEY_GET_BN_PARAM */
+#define HAVE_EVP_PKEY_GET_BN_PARAM 1
 
 /* Define to 1 if you have the `explicit_bzero' function. */
 #define HAVE_EXPLICIT_BZERO 1
@@ -251,13 +251,13 @@
 /* #undef HAVE_KEYUTILS_H */
 
 /* Define to 1 if you have the <lber.h> header file. */
-#define HAVE_LBER_H 1
+/* #undef HAVE_LBER_H */
 
 /* Define to 1 if you have the <ldap.h> header file. */
-#define HAVE_LDAP_H 1
+/* #undef HAVE_LDAP_H */
 
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
-/* #undef HAVE_LIBCRYPTO */
+#define HAVE_LIBCRYPTO 1
 
 /* Define if building with libedit. */
 /* #undef HAVE_LIBEDIT */
@@ -604,7 +604,7 @@
 #define KRB5_DNS_LOOKUP 1
 
 /* Define to enable DNS lookups of Kerberos realm names */
-/* #undef KRB5_DNS_LOOKUP_REALM */
+#define KRB5_DNS_LOOKUP_REALM 1
 
 /* Define if the KDC should return only vague error codes to clients */
 /* #undef KRBCONF_VAGUE_ERRORS */
@@ -681,7 +681,7 @@
 #define SIZEOF_TIME_T 8
 
 /* Define to use OpenSSL for SPAKE preauth */
-/* #undef SPAKE_OPENSSL */
+#define SPAKE_OPENSSL 1
 
 /* Define for static plugin linkage */
 /* #undef STATIC_PLUGINS */
@@ -698,10 +698,10 @@
 /* #undef SYS_ERRLIST_DECLARED */
 
 /* Define if no TLS implementation is selected */
-#define TLS_IMPL_NONE 1
+/* #undef TLS_IMPL_NONE */
 
 /* Define if TLS implementation is OpenSSL */
-/* #undef TLS_IMPL_OPENSSL */
+#define TLS_IMPL_OPENSSL 1
 
 /* Define to build macOS CCAPI client */
 /* #undef USE_CCAPI_MACOS */

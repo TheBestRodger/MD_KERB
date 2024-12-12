@@ -30,8 +30,7 @@
 
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <curl/curl.h>
-
+#include <microhttpd.h>
 #if defined(IP_PKTINFO) && defined(HAVE_STRUCT_IN_PKTINFO)
 #define HAVE_IP_PKTINFO
 #endif
@@ -486,79 +485,164 @@ void print_control_messages(struct msghdr *msg) {
 
 
 
-// Функция для обработки ответа
-size_t write_callback(void *ptr, size_t size, size_t nmemb, char *response) {
-    size_t data_length = size * nmemb;
-    strncat(response, (char *)ptr, data_length); // Добавляем данные в строку ответа
-    return data_length;
+
+// // Функция для отправки HTTP-запроса
+// int send_http_request(const char *url, const char *name) {
+//     CURL *curl;
+//     CURLcode res;
+//     char response[1024] = {0}; // Буфер для ответа
+//     struct curl_slist *headers = NULL;
+//     // Создаем JSON с именем
+//     char json_data[256];
+//     snprintf(json_data, sizeof(json_data), "{\"name\":\"%s\"}", name);
+
+//     // Инициализация libcurl
+//     curl = curl_easy_init();
+//     if (curl) {
+//         // Установка URL
+//         curl_easy_setopt(curl, CURLOPT_URL, url);
+
+//         // Установка HTTP-метода POST
+//         curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+//         // Установка данных для отправки
+//         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data);
+
+//         // Установка заголовков
+//         headers = curl_slist_append(headers, "Content-Type: application/json");
+//         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+//         // Установка callback-функции для обработки ответа
+//         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+//         curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+//         // Выполнение запроса
+//         res = curl_easy_perform(curl);
+
+//         // Проверка ошибок
+//         if (res != CURLE_OK) {
+//             fprintf(stderr, "Ошибка запроса: %s\n", curl_easy_strerror(res));
+//         } else {
+//             printf("Ответ сервера: %s\n", response);
+//         }
+
+//         // Очистка ресурсов
+//         curl_easy_cleanup(curl);
+//         curl_slist_free_all(headers);
+//     } else {
+//         fprintf(stderr, "Ошибка инициализации libcurl\n");
+//         return -1;
+//     }
+
+//     return 0;
+// }
+#define PORT 8000
+#define KEEP_ALIVE_INTERVAL 10 // секунд
+#define TIMEOUT 120 // секунд
+
+// Глобальные переменные для синхронизации
+static pthread_mutex_t number_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t number_cond = PTHREAD_COND_INITIALIZER;
+
+volatile int pre_auth = 1;
+volatile int number = -1; // -1: ожидаем, 0: не пройдено, 1: пройдено
+
+// Ответ клиенту
+static enum MHD_Result send_response(struct MHD_Connection *connection, const char *message, int status_code) {
+    struct MHD_Response *response;
+    int ret;
+
+    printf("Response: %s\n", message);
+
+    response = MHD_create_response_from_buffer(strlen(message), (void *) message, MHD_RESPMEM_PERSISTENT);
+    if (!response) return MHD_NO;
+
+    ret = MHD_queue_response(connection, status_code, response);
+    MHD_destroy_response(response);
+
+    return ret;
 }
 
-// Функция для отправки HTTP-запроса
-int send_http_request(const char *url, const char *name) {
-    CURL *curl;
-    CURLcode res;
-    char response[1024] = {0}; // Буфер для ответа
-    struct curl_slist *headers = NULL;
-    // Создаем JSON с именем
-    char json_data[256];
-    snprintf(json_data, sizeof(json_data), "{\"name\":\"%s\"}", name);
+void* keep_alive_thread(void* arg) {
+    int sock = *(int*)arg;
+    struct sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+    char empty_buf[1] = {0};
 
-    // Инициализация libcurl
-    curl = curl_easy_init();
-    if (curl) {
-        // Установка URL
-        curl_easy_setopt(curl, CURLOPT_URL, url);
+    // Предполагается, что здесь нужно будет прописать корректный адрес для sendto,
+    // или установить соединение. В текущем виде - заглушка.
+    memset(&addr, 0, sizeof(addr));
+    ((struct sockaddr_in*)&addr)->sin_family = AF_INET;
+    ((struct sockaddr_in*)&addr)->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    ((struct sockaddr_in*)&addr)->sin_port = htons(9999); // примерный порт
 
-        // Установка HTTP-метода POST
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
-        // Установка данных для отправки
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data);
-
-        // Установка заголовков
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-        // Установка callback-функции для обработки ответа
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-
-        // Выполнение запроса
-        res = curl_easy_perform(curl);
-
-        // Проверка ошибок
-        if (res != CURLE_OK) {
-            fprintf(stderr, "Ошибка запроса: %s\n", curl_easy_strerror(res));
-        } else {
-            printf("Ответ сервера: %s\n", response);
-        }
-
-        // Очистка ресурсов
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-    } else {
-        fprintf(stderr, "Ошибка инициализации libcurl\n");
-        return -1;
+    while (pre_auth) {
+        // Отправка keep-alive
+        sendto(sock, empty_buf, 0, 0, (struct sockaddr*)&addr, addr_len);
+        sleep(KEEP_ALIVE_INTERVAL);
     }
 
-    return 0;
+    return NULL;
 }
 
-static int pre_auth = 0;
-static int stop  = 0;
-const char *url = "http://localhost:8080";
-krb5_error_code
-send_to_from(int sock, void *buf, size_t len, int flags,
-             const struct sockaddr *to, socklen_t tolen, struct sockaddr *from,
-             socklen_t fromlen, aux_addressing_info *auxaddr, char * name_princ)
+// Обработчик запросов HTTP
+static enum MHD_Result request_handler(void *cls,
+                           struct MHD_Connection *connection,
+                           const char *url,
+                           const char *method,
+                           const char *version,
+                           const char *upload_data,
+                           size_t *upload_data_size,
+                           void **con_cls)
 {
+    const char *response;
+    if (strcmp(method, "GET") != 0) {
+        return send_response(connection, "Only GET method is supported", MHD_HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    if (strcmp(url, "/input") == 0) {
+        const char *value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "value");
+        if (!value) {
+            return send_response(connection, "Missing 'value' parameter", MHD_HTTP_BAD_REQUEST);
+        }
+
+        pthread_mutex_lock(&number_mutex);
+        number = atoi(value);
+        if (number == 1) {
+            response = "Received: Positive one (2FA passed)";
+        } else if (number == 0) {
+            response = "Received: Zero (2FA failed)";
+        } else if (number == -1) {
+            response = "Received: Negative one (waiting)";
+        } else {
+            response = "Invalid input. Please provide 1, 0, or -1.";
+        }
+
+        // Сигнализируем основному потоку, что у нас есть результат
+        pthread_cond_signal(&number_cond);
+        pthread_mutex_unlock(&number_mutex);
+
+        return send_response(connection, response, MHD_HTTP_OK);
+    }
+
+    return send_response(connection, "Not Found", MHD_HTTP_NOT_FOUND);
+}
+
+krb5_error_code send_to_from(int sock, void *buf, size_t len, int flags,
+                             const struct sockaddr *to, socklen_t tolen,
+                             struct sockaddr *from, socklen_t fromlen,
+                             aux_addressing_info *auxaddr, char * name_princ) {
     int r;
     struct iovec iov;
     struct msghdr msg;
     struct cmsghdr *cmsgptr;
-    char cbuf[CMSG_SPACE(sizeof(union pktinfo))];
+    char cbuf[CMSG_SPACE(sizeof(union { char c; }))];
+    pthread_t thread;
+    struct MHD_Daemon *daemon;
+    int rc;
+    struct timespec ts;
 
-    /* Don't use pktinfo if the socket isn't bound to a wildcard address. */
+    // Проверка сокета
     r = is_socket_bound_to_wildcard(sock);
     if (r < 0)
         return errno;
@@ -566,36 +650,60 @@ send_to_from(int sock, void *buf, size_t len, int flags,
     if (from == NULL || fromlen == 0 || from->sa_family != to->sa_family || !r)
         goto use_sendto;
 
-    printf("Preaut = [%d] \n", pre_auth);
-    send_http_request(url, name_princ);
-    if(pre_auth)
-    {
-        if(stop < 15)
-        {
-            iov.iov_base = NULL;
-            iov.iov_len = 0;
-            sleep(5);
-            stop += 5;
-            printf("Wait stop = [%d] \n", stop);
-        }
-        else if(stop == 15)
-        {        
-            iov.iov_base = buf;
-            iov.iov_len = len;
-            /* Truncation?  */
-            if (iov.iov_len != len)
-                return EINVAL;
-            printf("Didnt Pass 2fa \n");
-            sleep(30);
-            pre_auth = 0;
-            //k5_setmsg(_("Cannot contact any KDC for realm '%.*s'"));
-            return errno;
-            
-            //iov.iov_base = (void*)EACCES;//buf;
-            //iov.iov_len = sizeof(EACCES);//len;
-        }
-        pre_auth = 1;
+    // Запуск HTTP сервера для обработки 2FA
+    daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL,
+                              &request_handler, NULL, MHD_OPTION_END);
+    if (!daemon) {
+        printf("Не удалось запустить сервер\n");
+        return errno;
     }
+
+    printf("Сервер работает на http://localhost:%d\n", PORT);
+    printf("Ожидаем результат 2FA для принципала: %s\n", name_princ);
+
+    // Запуск потока для отправки keep-alive сообщений
+    pre_auth = 1;
+    if (pthread_create(&thread, NULL, keep_alive_thread, &sock) != 0) {
+        perror("pthread_create");
+        MHD_stop_daemon(daemon);
+        return errno;
+    }
+
+    // Устанавливаем время таймаута ожидания 2FA
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += TIMEOUT;
+
+    pthread_mutex_lock(&number_mutex);
+    while (number == -1) {
+        rc = pthread_cond_timedwait(&number_cond, &number_mutex, &ts);
+        if (rc == ETIMEDOUT) {
+            printf("Таймаут ожидания 2FA\n");
+            number = 0; // Обрабатываем как не пройдено
+            break;
+        }
+    }
+    pthread_mutex_unlock(&number_mutex);
+
+    // Остановка HTTP сервера
+    MHD_stop_daemon(daemon);
+
+    // Остановка keep-alive потока
+    pre_auth = 0;
+    pthread_join(thread, NULL);
+
+    printf("Preauth завершен. Результат 2FA: %d\n", number);
+
+    if (number == 1) {
+        // 2FA пройдено
+        iov.iov_base = buf;
+        iov.iov_len = len;
+        printf("2FA пройдено\n");
+    } else {
+        // Не пройдено или ошибка
+        iov.iov_base = NULL;
+        iov.iov_len = 0;
+    }
+
     memset(cbuf, 0, sizeof(cbuf));
     memset(&msg, 0, sizeof(msg));
     msg.msg_name = (void *)to;
@@ -603,21 +711,119 @@ send_to_from(int sock, void *buf, size_t len, int flags,
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
     msg.msg_control = cbuf;
-    /* CMSG_FIRSTHDR needs a non-zero controllen, or it'll return NULL on
-     * Linux. */
     msg.msg_controllen = sizeof(cbuf);
     cmsgptr = CMSG_FIRSTHDR(&msg);
     msg.msg_controllen = 0;
-    
-    //print_control_messages(&msg);
-    pre_auth = 1;
-    if (set_msg_from(from->sa_family, &msg, cmsgptr, from, fromlen, auxaddr))
+
+    if (set_msg_from(from->sa_family, &msg, cmsgptr, from, fromlen, auxaddr)) {
         goto use_sendto;
-    return sendmsg(sock, &msg, flags);
+    }
+
+    // Отправляем ответ в зависимости от результата 2FA
+    if (number == 1) {
+        return sendmsg(sock, &msg, flags);
+    } else {
+        // Если 2FA не пройдено
+        return errno;
+    }
 
 use_sendto:
     return sendto(sock, buf, len, flags, to, tolen);
 }
+
+
+/////////////////////////////////////////////// мейн
+// #define PORT 8000
+// #define KEEP_ALIVE_INTERVAL 10 // секунд
+// #define TIMEOUT 120 // секунд
+
+// volatile int pre_auth = 1;
+// volatile int number = -1; // -1: ожидаем, 0: не пройдено, 1: пройдено
+// const char *url = "http://localhost:8080";
+// krb5_error_code
+// send_to_from(int sock, void *buf, size_t len, int flags,
+//              const struct sockaddr *to, socklen_t tolen, struct sockaddr *from,
+//              socklen_t fromlen, aux_addressing_info *auxaddr, char * name_princ)
+// {
+//     int r;
+//     struct iovec iov;
+//     struct msghdr msg;
+//     struct cmsghdr *cmsgptr;
+//     char cbuf[CMSG_SPACE(sizeof(union pktinfo))];
+
+//     struct MHD_Daemon *daemon;
+//     printf("Work&& \n");
+//     /* Don't use pktinfo if the socket isn't bound to a wildcard address. */
+//     r = is_socket_bound_to_wildcard(sock);
+//     if (r < 0)
+//         return errno;
+
+//     if (from == NULL || fromlen == 0 || from->sa_family != to->sa_family || !r)
+//         goto use_sendto;
+//         // тут генерируетс число - number
+//     daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &request_handler, NULL, MHD_OPTION_END);
+//     if (!daemon) {
+//         printf("Failed to start server\n");
+//         return 1;
+//     }
+
+//     printf("Server running on http://localhost:%d\n", PORT);
+//     getchar(); // Ожидание ввода для остановки сервера
+
+//     MHD_stop_daemon(daemon);
+//     printf("Preaut = [%d] \n", pre_auth);
+//     if(pre_auth) // если преаут вкл
+//     {
+//         if(number == 1)
+//         {
+//             // Если все хорошо
+//             iov.iov_base = buf;
+//             iov.iov_len = len;
+//             /* Truncation?  */
+//             if (iov.iov_len != len)
+//                 return EINVAL;
+//             printf("Didnt Pass 2fa \n");
+//             pre_auth = 0;
+//         }
+//         else if(number == 0)
+//         {        
+//             // данный которые если 2фа не пройденно
+//             iov.iov_base = NULL;
+//             iov.iov_len = 0;
+//             return errno;
+//         }
+//         else
+//         {
+//             // Поддерживающие данный которые нужны для сигнала
+//             iov.iov_base = NULL;
+//             iov.iov_len = 0;
+//         }
+//         pre_auth = 1;
+//     }
+//     memset(cbuf, 0, sizeof(cbuf));
+//     memset(&msg, 0, sizeof(msg));
+//     msg.msg_name = (void *)to;
+//     msg.msg_namelen = tolen;
+//     msg.msg_iov = &iov;
+//     msg.msg_iovlen = 1;
+//     msg.msg_control = cbuf;
+//     /* CMSG_FIRSTHDR needs a non-zero controllen, or it'll return NULL on
+//      * Linux. */
+//     msg.msg_controllen = sizeof(cbuf);
+//     cmsgptr = CMSG_FIRSTHDR(&msg);
+//     msg.msg_controllen = 0;
+    
+//     //print_control_messages(&msg);
+//     pre_auth = 1;
+//     if (set_msg_from(from->sa_family, &msg, cmsgptr, from, fromlen, auxaddr))
+//         goto use_sendto;
+//     return sendmsg(sock, &msg, flags);
+
+// use_sendto:
+//     return sendto(sock, buf, len, flags, to, tolen);
+// }
+
+
 
 #else /* HAVE_PKTINFO_SUPPORT && CMSG_SPACE */
 

@@ -187,7 +187,7 @@ INSTALL_SHLIB=$(INSTALL)
 INSTALL_SETUID=$(INSTALL) $(INSTALL_STRIP) -m 4755 -o root
 ## This is needed because autoconf will sometimes define ${prefix} to be
 ## ${prefix}.
-prefix=/usr/local
+prefix=/usr/local/kerberos
 INSTALL_PREFIX=$(prefix)
 INSTALL_EXEC_PREFIX=${prefix}
 exec_prefix=${prefix}
@@ -408,18 +408,18 @@ CRYPTO_IMPL_CFLAGS	=
 CRYPTO_IMPL_LIBS	= 
 
 # TLS implementation selection
-TLS_IMPL	= no
+TLS_IMPL	= openssl
 TLS_IMPL_CFLAGS = 
-TLS_IMPL_LIBS	= 
+TLS_IMPL_LIBS	= -lssl -lcrypto
 
 # SPAKE preauth back-end libraries
-SPAKE_OPENSSL_LIBS = 
+SPAKE_OPENSSL_LIBS = -lcrypto
 
 # Whether we have the SASL header file for the LDAP KDB module
 HAVE_SASL = no
 
 # Whether we are building support for NIST SPAKE groups using OpenSSL
-HAVE_SPAKE_OPENSSL = no
+HAVE_SPAKE_OPENSSL = yes
 
 # Whether we are building the LMDB KDB module
 HAVE_LMDB = no

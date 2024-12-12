@@ -368,7 +368,7 @@ VERTO_LIBS	= -lverto
 DL_LIB		= 
 
 CMOCKA_LIBS	= 
-LDAP_LIBS	= -lldap -llber
+LDAP_LIBS	= 
 LMDB_LIBS	= 
 
 KRB5_LIB			= -lkrb5
@@ -408,18 +408,18 @@ CRYPTO_IMPL_CFLAGS	=
 CRYPTO_IMPL_LIBS	= 
 
 # TLS implementation selection
-TLS_IMPL	= no
+TLS_IMPL	= openssl
 TLS_IMPL_CFLAGS = 
-TLS_IMPL_LIBS	= 
+TLS_IMPL_LIBS	= -lssl -lcrypto
 
 # SPAKE preauth back-end libraries
-SPAKE_OPENSSL_LIBS = 
+SPAKE_OPENSSL_LIBS = -lcrypto
 
 # Whether we have the SASL header file for the LDAP KDB module
-HAVE_SASL = no
+HAVE_SASL = 
 
 # Whether we are building support for NIST SPAKE groups using OpenSSL
-HAVE_SPAKE_OPENSSL = no
+HAVE_SPAKE_OPENSSL = yes
 
 # Whether we are building the LMDB KDB module
 HAVE_LMDB = no
@@ -610,7 +610,7 @@ PYTESTFLAGS=
 ############################################################
 mydir=tests$(S)asn.1
 BUILDTOP=$(REL)..$(S)..
-LDAP=yes
+LDAP=no
 
 SRCS= $(srcdir)/krb5_encode_test.c $(srcdir)/krb5_decode_test.c \
 	$(srcdir)/krb5_decode_leak.c $(srcdir)/ktest.c \
@@ -651,20 +651,20 @@ check-leak: krb5_decode_leak
 check-decode: krb5_decode_test
 	$(RUN_TEST) ./krb5_decode_test
 
-PKINIT_ENCODE_OUT=$(PKINIT_ENCODE_OUT-no)
+PKINIT_ENCODE_OUT=$(PKINIT_ENCODE_OUT-yes)
 PKINIT_ENCODE_OUT-yes=$(srcdir)/pkinit_encode.out
 PKINIT_ENCODE_OUT-no=
-LDAP_ENCODE_OUT=$(LDAP_ENCODE_OUT-yes)
+LDAP_ENCODE_OUT=$(LDAP_ENCODE_OUT-no)
 LDAP_ENCODE_OUT-yes=$(srcdir)/ldap_encode.out
 LDAP_ENCODE_OUT-no=
 expected_encode.out: reference_encode.out pkinit_encode.out ldap_encode.out
 	cat $(srcdir)/reference_encode.out $(PKINIT_ENCODE_OUT) \
 		$(LDAP_ENCODE_OUT) > $@
 
-PKINIT_TRVAL_OUT=$(PKINIT_TRVAL_OUT-no)
+PKINIT_TRVAL_OUT=$(PKINIT_TRVAL_OUT-yes)
 PKINIT_TRVAL_OUT-yes=$(srcdir)/pkinit_trval.out
 PKINIT_TRVAL_OUT-no=
-LDAP_TRVAL_OUT=$(LDAP_TRVAL_OUT-yes)
+LDAP_TRVAL_OUT=$(LDAP_TRVAL_OUT-no)
 LDAP_TRVAL_OUT-yes=$(srcdir)/ldap_trval.out
 LDAP_TRVAL_OUT-no=
 expected_trval.out: trval_reference.out pkinit_trval.out ldap_trval.out

@@ -368,7 +368,7 @@ VERTO_LIBS	= -lverto
 DL_LIB		= 
 
 CMOCKA_LIBS	= 
-LDAP_LIBS	= -lldap -llber
+LDAP_LIBS	= 
 LMDB_LIBS	= 
 
 KRB5_LIB			= -lkrb5
@@ -408,18 +408,18 @@ CRYPTO_IMPL_CFLAGS	=
 CRYPTO_IMPL_LIBS	= 
 
 # TLS implementation selection
-TLS_IMPL	= no
+TLS_IMPL	= openssl
 TLS_IMPL_CFLAGS = 
-TLS_IMPL_LIBS	= 
+TLS_IMPL_LIBS	= -lssl -lcrypto
 
 # SPAKE preauth back-end libraries
-SPAKE_OPENSSL_LIBS = 
+SPAKE_OPENSSL_LIBS = -lcrypto
 
 # Whether we have the SASL header file for the LDAP KDB module
-HAVE_SASL = no
+HAVE_SASL = 
 
 # Whether we are building support for NIST SPAKE groups using OpenSSL
-HAVE_SPAKE_OPENSSL = no
+HAVE_SPAKE_OPENSSL = yes
 
 # Whether we are building the LMDB KDB module
 HAVE_LMDB = no
